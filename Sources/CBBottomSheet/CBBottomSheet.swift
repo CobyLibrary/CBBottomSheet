@@ -80,7 +80,7 @@ struct BottomSheetModifier<SheetContent: View>: ViewModifier {
 }
 
 extension View {
-    func bottomSheet<SheetContent: View>(isOpen: Binding<Bool>, startHeight: CGFloat, maxHeight: CGFloat, @ViewBuilder sheetContent: () -> SheetContent) -> some View {
+    public func bottomSheet<SheetContent: View>(isOpen: Binding<Bool>, startHeight: CGFloat, maxHeight: CGFloat, @ViewBuilder sheetContent: () -> SheetContent) -> some View {
         self.modifier(BottomSheetModifier(isOpen: isOpen, startHeight: startHeight, maxHeight: maxHeight, sheetContent: sheetContent))
     }
 }
