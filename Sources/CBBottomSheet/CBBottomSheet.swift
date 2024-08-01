@@ -51,8 +51,7 @@ struct BottomSheetModifier<SheetContent: View>: ViewModifier {
                                         let midHeight = (self.maxHeight - self.minHeight) / 2
                                         
                                         if self.offsetY == self.maxHeight - self.minHeight {
-                                            // 현재 시트가 최대 높이에 있을 때
-                                            if newHeight > self.maxHeight - self.minHeight {
+                                            if self.dragOffset > 100 {
                                                 self.isOpen = false
                                             } else if newHeight > midHeight {
                                                 self.offsetY = self.maxHeight - self.minHeight
@@ -60,7 +59,6 @@ struct BottomSheetModifier<SheetContent: View>: ViewModifier {
                                                 self.offsetY = 0
                                             }
                                         } else {
-                                            // 현재 시트가 최소 높이에 있을 때
                                             if newHeight > midHeight {
                                                 self.offsetY = self.maxHeight - self.minHeight
                                             } else {
