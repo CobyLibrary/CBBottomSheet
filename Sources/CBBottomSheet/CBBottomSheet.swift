@@ -1,142 +1,124 @@
 import SwiftUI
 
-public struct CBBottomSheet<Content: View>: View {
-    @State private var currentOffset: CGFloat = 0
-    @State private var endOffset: CGFloat = 0
+struct BottomSheetModifier<SheetContent: View>: ViewModifier {
+    @Binding var isOpen: Bool
+    @State private var offsetY: CGFloat
+    @State private var dragOffset: CGFloat = 0
     
-    private var minHeight: CGFloat
-    private var maxHeight: CGFloat
-    private var maxOffset: CGFloat {
-        UIScreen.main.bounds.height + Self.topPadding() - maxHeight
-    }
-    private var startingOffset: CGFloat {
-        UIScreen.main.bounds.height + Self.topPadding() - minHeight
-    }
+    private let minHeight: CGFloat
+    private let maxHeight: CGFloat
     
-    private var backgroundColor: Color
-    private var indicatorBackgroundColor: Color
+    let sheetContent: SheetContent
     
-    private var content: () -> Content
-    
-    public static func topPadding() -> CGFloat {
-        let scenes = UIApplication.shared.connectedScenes
-        let windowScene = scenes.first as? UIWindowScene
-        let window = windowScene?.windows.first
-        let topPadding = window?.safeAreaInsets.top ?? 0
-        return topPadding
-    }
-    
-    public static func bottomPadding() -> CGFloat {
-        let scenes = UIApplication.shared.connectedScenes
-        let windowScene = scenes.first as? UIWindowScene
-        let window = windowScene?.windows.first
-        let bottomPadding = window?.safeAreaInsets.bottom ?? 0
-        return bottomPadding
-    }
-    
-    public init(
-        minHeight: CGFloat,
-        maxHeight: CGFloat = UIScreen.main.bounds.height + Self.bottomPadding(),
-        backgroundColor: Color = Color.backgroundPrimary,
-        indicatorBackgroundColor: Color = Color.backgroundPrimary,
-        @ViewBuilder content: @escaping () -> Content
-    ) {
-        self.minHeight = minHeight
+    init(isOpen: Binding<Bool>, startHeight: CGFloat, maxHeight: CGFloat, @ViewBuilder sheetContent: () -> SheetContent) {
+        self._isOpen = isOpen
+        self._offsetY = State(initialValue: maxHeight - startHeight)
+        self.minHeight = startHeight
         self.maxHeight = maxHeight
-        
-        self.backgroundColor = backgroundColor
-        self.indicatorBackgroundColor = indicatorBackgroundColor
-        
-        self.content = content
+        self.sheetContent = sheetContent()
     }
     
-    public var body: some View {
-        VStack(spacing: 0) {
-            Capsule()
-                .foregroundColor(.grayscale400)
-                .frame(width: 40, height: 6)
-                .padding(.vertical, 8)
-                .frame(maxWidth: .infinity)
-                .background(indicatorBackgroundColor)
+    func body(content: Content) -> some View {
+        ZStack {
+            content
             
-            content()
+            GeometryReader { geometry in
+                if isOpen {
+                    VStack {
+                        Spacer()
+                        
+                        VStack {
+                            Capsule()
+                                .frame(width: 40, height: 6)
+                                .foregroundColor(.gray)
+                                .padding(.top, 8)
+                            
+                            self.sheetContent
+                        }
+                        .frame(width: geometry.size.width, height: self.maxHeight, alignment: .top)
+                        .background(Color.white)
+                        .cornerRadius(16)
+                        .offset(y: isOpen ? max(self.offsetY + self.dragOffset, 0) : geometry.size.height)
+                        .animation(.interactiveSpring(), value: offsetY + dragOffset)
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    self.dragOffset = value.translation.height
+                                }
+                                .onEnded { value in
+                                    withAnimation(.interactiveSpring()) {
+                                        let newHeight = self.offsetY + self.dragOffset
+                                        let midHeight = (self.maxHeight - self.minHeight) / 2
+                                        
+                                        if self.offsetY == self.maxHeight - self.minHeight {
+                                            // 현재 시트가 최대 높이에 있을 때
+                                            if newHeight > self.maxHeight - self.minHeight {
+                                                self.isOpen = false
+                                            } else if newHeight > midHeight {
+                                                self.offsetY = self.maxHeight - self.minHeight
+                                            } else {
+                                                self.offsetY = 0
+                                            }
+                                        } else {
+                                            // 현재 시트가 최소 높이에 있을 때
+                                            if newHeight > midHeight {
+                                                self.offsetY = self.maxHeight - self.minHeight
+                                            } else {
+                                                self.offsetY = 0
+                                            }
+                                        }
+                                        self.dragOffset = 0
+                                    }
+                                }
+                        )
+                    }
+                    .edgesIgnoringSafeArea(.all)
+                    .transition(.move(edge: .bottom))
+                    .animation(.easeInOut, value: isOpen)
+                }
+            }
         }
-        .frame(maxWidth: .infinity)
-        .background(backgroundColor)
-        .clipShape(TopRoundedShape(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: -10)
-        .edgesIgnoringSafeArea(.bottom)
-        .offset(y: startingOffset)
-        .offset(y: currentOffset)
-        .offset(y: endOffset)
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    withAnimation(.spring()) {
-                        currentOffset = value.translation.height
-                        if endOffset == 0 && startingOffset + currentOffset < maxOffset {
-                            currentOffset = maxOffset - startingOffset
-                        } else if endOffset != 0 && currentOffset < 0 {
-                            currentOffset = 0
-                        }
-                    }
-                }
-                .onEnded { value in
-                    withAnimation(.spring()) {
-                        if currentOffset < -(maxHeight-minHeight)/2 {
-                            endOffset = -(maxHeight-minHeight)
-                        } else if endOffset != 0 && currentOffset > (maxHeight-minHeight)/2 {
-                            endOffset = 0
-                        }
-                        currentOffset = 0
-                    }
-                }
-        )
     }
 }
 
-public struct TopRoundedShape: Shape {
-    var cornerRadius: CGFloat
-    
-    public func path(in rect: CGRect) -> Path {
-        var path = Path()
-        
-        path.move(to: .init(x: rect.minX, y: rect.minY + cornerRadius))
-        path.addArc(center: .init(x: rect.minX + cornerRadius, y: rect.minY + cornerRadius),
-                    radius: cornerRadius,
-                    startAngle: .degrees(180),
-                    endAngle: .degrees(270),
-                    clockwise: false)
-        path.addLine(to: .init(x: rect.maxX - cornerRadius, y: rect.minY))
-        path.addArc(center: .init(x: rect.maxX - cornerRadius, y: rect.minY + cornerRadius),
-                    radius: cornerRadius,
-                    startAngle: .degrees(270),
-                    endAngle: .degrees(360),
-                    clockwise: false)
-        path.addLine(to: .init(x: rect.maxX, y: rect.maxY))
-        path.addLine(to: .init(x: rect.minX, y: rect.maxY))
-        path.closeSubpath()
-        
-        return path
+extension View {
+    func bottomSheet<SheetContent: View>(isOpen: Binding<Bool>, startHeight: CGFloat, maxHeight: CGFloat, @ViewBuilder sheetContent: () -> SheetContent) -> some View {
+        self.modifier(BottomSheetModifier(isOpen: isOpen, startHeight: startHeight, maxHeight: maxHeight, sheetContent: sheetContent))
     }
 }
 
-extension Color {
-    @nonobjc public static var backgroundPrimary: Color {
-        return Color(UIColor { traitCollection in
-            switch traitCollection.userInterfaceStyle {
-            case .dark: return UIColor(red: 13.0 / 255.0, green: 14.0 / 255.0, blue: 19.0 / 255.0, alpha: 1.0)
-            default: return UIColor(white: 1.0, alpha: 1.0)
-            }
-        })
-    }
+struct ContentView: View {
+    @State private var isBottomSheetOpen = false
     
-    @nonobjc public static var grayscale400: Color {
-        return Color(UIColor { traitCollection in
-            switch traitCollection.userInterfaceStyle {
-            case .dark: return UIColor(white: 1.0, alpha: 0.24)
-            default: return UIColor(white: 183.0 / 255.0, alpha: 1.0)
+    var body: some View {
+        VStack {
+            Button(action: {
+                withAnimation {
+                    self.isBottomSheetOpen.toggle()
+                }
+            }) {
+                Text("Open Bottom Sheet")
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.black)
+                    .cornerRadius(8)
             }
-        })
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.blue)
+        .bottomSheet(isOpen: $isBottomSheetOpen, startHeight: 500, maxHeight: 700) {
+            VStack {
+                ForEach(0..<100) { _ in
+                    Text("Hello, World!")
+                        .padding()
+                }
+            }
+        }
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
     }
 }
