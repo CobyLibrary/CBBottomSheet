@@ -7,7 +7,6 @@ struct BottomSheetModifier<SheetContent: View>: ViewModifier {
     
     private let minHeight: CGFloat
     private let maxHeight: CGFloat
-    
     private var sheetHeight: CGFloat {
         self.maxHeight - max(self.offsetY + self.dragOffset, 0)
     }
@@ -38,6 +37,7 @@ struct BottomSheetModifier<SheetContent: View>: ViewModifier {
                                 .padding(.top, 8)
                             
                             self.sheetContent
+                                .padding(.bottom, self.maxHeight - self.sheetHeight)
                         }
                         .frame(width: geometry.size.width, height: self.sheetHeight, alignment: .top)
                         .background(Color.white)
@@ -47,10 +47,17 @@ struct BottomSheetModifier<SheetContent: View>: ViewModifier {
                         .gesture(
                             DragGesture()
                                 .onChanged { value in
-                                    self.dragOffset = value.translation.height
+                                    if value.translation.height > 50 || value.translation.height < -50 {
+                                        self.dragOffset = value.translation.height
+                                    }
+                                    
+                                    print("offsetY: \(offsetY)")
+                                    print("dragOffset: \(dragOffset)")
+                                    print("sheetHeight: \(sheetHeight)")
+                                    print("--------------------------")
                                 }
                                 .onEnded { value in
-                                    withAnimation(.interactiveSpring()) {
+                                    withAnimation {
                                         let newHeight = self.offsetY + self.dragOffset
                                         let midHeight = (self.maxHeight - self.minHeight) / 2
                                         
@@ -116,6 +123,7 @@ struct ContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
+                .background(Color.brown)
             }
         }
     }
