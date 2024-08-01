@@ -8,6 +8,10 @@ struct BottomSheetModifier<SheetContent: View>: ViewModifier {
     private let minHeight: CGFloat
     private let maxHeight: CGFloat
     
+    private var sheetHeight: CGFloat {
+        self.maxHeight - max(self.offsetY + self.dragOffset, 0)
+    }
+    
     let sheetContent: SheetContent
     
     init(isOpen: Binding<Bool>, startHeight: CGFloat, maxHeight: CGFloat, @ViewBuilder sheetContent: () -> SheetContent) {
@@ -35,7 +39,7 @@ struct BottomSheetModifier<SheetContent: View>: ViewModifier {
                             
                             self.sheetContent
                         }
-                        .frame(width: geometry.size.width, height: self.maxHeight, alignment: .top)
+                        .frame(width: geometry.size.width, height: self.sheetHeight, alignment: .top)
                         .background(Color.white)
                         .cornerRadius(16)
                         .offset(y: isOpen ? max(self.offsetY + self.dragOffset, 0) : geometry.size.height)
@@ -105,11 +109,13 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.blue)
         .bottomSheet(isOpen: $isBottomSheetOpen, startHeight: 500, maxHeight: 700) {
-            VStack {
-                ForEach(0..<100) { _ in
-                    Text("Hello, World!")
-                        .padding()
+            ScrollView {
+                VStack(spacing: 20) {
+                    ForEach(0..<20) { _ in
+                        Text("Hello, World!")
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
         }
     }
