@@ -1,6 +1,6 @@
 # CBBottomSheet - iOS - Swift - SwiftUI
 
-CBDateRangePicker is a DatePickerView that returns a date range by selecting the start date and the last date.
+CBBottomSheet supports BottomSheet with scrolling in SwiftUI.
 
 [![SwiftMP compatible](https://img.shields.io/badge/SwiftPM-compatible-brightgreen.svg?style=flat)](https://github.com/apple/swift-package-manager)
 [![Swift](https://img.shields.io/badge/Swift-5-green.svg?style=flat)](https://swift.org)
